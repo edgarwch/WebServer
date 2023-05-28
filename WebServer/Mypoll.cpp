@@ -57,7 +57,6 @@ void Mypoll::poll(std::vector<spChannel>& request){
         int fd = _events[i].data.fd;
         spChannel tmp = _fd2chan[fd];
         tmp->SetRevents(_events[i].events);
-        // avoid copy constructor
         request.emplace_back(tmp);
     }
 
