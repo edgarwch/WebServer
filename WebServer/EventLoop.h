@@ -1,48 +1,66 @@
 #pragma once
 #include <functional>
+#include <vector>
+#include "Channel.h"
+#include "Mypoll.h"
+#include "../utils/util.h"
 class EventLoop{
-public:
-    typedef std::function<void()> Func;
+    public:
+        // callback function
+        typedef std::function<void()> Func;
 
-    EventLoop();
-    ~EventLoop();
-    
-    void Loop();
-    void StopLoop();
+        EventLoop();
+        ~EventLoop();
+        
+        void Loop();
+        void StopLoop();
 
-    void RunInLoop(Func&& func);
+        void RunInLoop(Func&& func);
 
-    void QueueLoop(Func&& func);
+        void QueueLoop(Func&& func);
 
-    //polleradd
+        //polleradd
+        void PollerAdd(std::shared_ptr<Channel> channel, int timeout = 0){
+            _poller->epoll_add(channel);
+        };
+        //poller mod
+        void PollerMod(std::shared_ptr<Channel> channel, int timeout = 0){
+            _poller->epoll_mod(channel);
+        };
+        //poller del
+        void PollerDel(std::shared_ptr<Channel> channel){
+            _poller->epoll_del(channel);
+        };
+        //shutdown!
+        void Shutdown(std::shared_ptr<Channel> channel){
+            // SOCKET shutdown
+            // clear the buffer first
+        };
 
-    //poller mod
+        bool IsInLoopThread();
 
-    //poller del
+    private:
 
-    //shutdown!
+        int _event_fd;
 
+        pid_t thread_id;
 
-private:
+        bool _is_stop;
+        bool _is_looping;
+        bool _is_event_handleing;
+        bool _is_handling_pending_functions;
 
-    int event_fd_;
+        static int MkEventfd();
+        void HandleUpdate();
+        void HandleRead(); // by read from event_fd
+        void AsynWake(); // by write to event_fd
+        void HandlePendingFUnctions();
 
-    pid_t thread_id;
+        std::shared_ptr<Channel> _wakeup_channel;
 
-    bool is_stop_;
-    bool is_looping_;
-    bool is_event_handleing_;
-    bool is_handling_pending_functions_;
+        std::shared_ptr<Mypoll> _poller;
 
-    static int MkEventfd();
-    void HandleUpdate();
-    void HandleRead();
-    void AsynWake();
-    void HandlePendingFUnctions();
+        // mutex lock
 
-
-
-    std::vector<Func> pendingFunction;
-
-
+        std::vector<Func> pendingFunction;
 };
