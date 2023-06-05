@@ -11,6 +11,7 @@
                 //help me include all files
                 "${fileDirname}/test/tEventloop.cpp",
                 "${fileDirname}/utils/noncopyable.cpp",
+                "${fileDirname}/WebServer/MemoryPool.cpp",
                 "-o",
                 "${fileDirname}/${fileBasenameNoExtension}"
             ],
