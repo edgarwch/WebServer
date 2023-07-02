@@ -51,6 +51,13 @@ void EventLoop::Loop(){
     _is_looping = false;
 }
 
+void EventLoop::StopLoop() {
+  _is_stop = true;
+  if (!IsInLoopThread()) {
+    AsynWake();;
+  }
+}
+
 void EventLoop::RunInLoop(Func &&func){
     if(IsInLoopThread){
         func();
@@ -60,13 +67,16 @@ void EventLoop::RunInLoop(Func &&func){
 }
 
 void EventLoop::QueueLoop(Func &&func){
-    //lock
-    pendingFunction.emplace_back(func);
+    {
+        MutexLockGard lock(mutex_);
+        pendingFunction.emplace_back(std::move(func));
+    }
     if(!IsInLoopThread() || _is_handling_pending_functions) AsynWake();
+
 }
 
 bool EventLoop::IsInLoopThread(){
-    return false;
+    return thread_id == std::this_thread::get_id();
 }
 
 void EventLoop::HandleUpdate(){
@@ -74,19 +84,27 @@ void EventLoop::HandleUpdate(){
 }
 
 void EventLoop::HandleRead(){
-    // TODO read operation
-    // _wakeup_channel->SetEvents(EPOLLIN | EPOLLET);
+    uint64_t one = 1;
+    ssize_t n = readn(_event_fd, &one, sizeof one);
+    _wakeup_channel->SetEvents(EPOLLIN | EPOLLET);
 }
 
 void EventLoop::HandlePendingFUnctions(){
     std::vector<Func> funcs;
     _is_handling_pending_functions = true;
     // lock
-    // funcs.swap(pendingFunction)
-    // for (size_t i = 0; i < funcs.size(); ++i) funcs[i]();
+    {
+        MutexLockGard lock(mutex_);
+        funcs.swap(pendingFunction);
+
+    }
+    for (size_t i = 0; i < funcs.size(); ++i) funcs[i]();
     _is_handling_pending_functions = false;
 }
 
 void EventLoop::AsynWake(){
- // TODO write
+  uint64_t one = 1;
+  ssize_t n = writen(_event_fd, (char*)(&one), sizeof one);
+  if (n != sizeof one) {
+  }
 }

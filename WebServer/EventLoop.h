@@ -4,6 +4,7 @@
 #include "Channel.h"
 #include "Mypoll.h"
 #include "../utils/util.h"
+#include "SocketUtils.h"
 class EventLoop{
     public:
         // callback function

@@ -2,16 +2,12 @@
 
 
 MemoryPool::MemoryPool(){
-    _slotSize = 0;
-    _freeSlot = NULL;
-    _currentSlot = NULL;
-    _firstBlock = NULL;
-    _lastSlot = NULL;
+
 }
 
 MemoryPool::~MemoryPool(){
     // free all the memory
-    Slot* cur = _firstBlock;
+    Slot* cur = _currentBlock;
     while(cur){
         Slot* next = cur->next;
         // this will not call the destructor of the object, just free the memory
@@ -23,6 +19,10 @@ MemoryPool::~MemoryPool(){
 void MemoryPool::init(int size){
     assert(size > 0);
     _slotSize = size;
+    _freeSlot = NULL;
+    _currentSlot = NULL;
+    _currentBlock = NULL;
+    _lastSlot = NULL;
 }
 
 inline size_t MemoryPool::padPointer(char* ptr, size_t align){
@@ -39,6 +39,10 @@ Slot* MemoryPool::allocateBlock(){
     Slot* useSlot;
     {
         MutexLockGard Lock(_mutex_other);
+        reinterpret_cast<Slot*>(newBlock)->next = _currentBlock;
+        _currentBlock = reinterpret_cast<Slot*>(newBlock);
+        _currentSlot = reinterpret_cast<Slot*>(body + padding);
+        _lastSlot = reinterpret_cast<Slot*>(newBlock + BLOCKSIZE - _slotSize + 1);
         useSlot = _currentSlot;
         // slot size 8 16 32.....512
         _currentSlot += (_slotSize >> 3);
@@ -100,12 +104,13 @@ void* Use_Memory(size_t size){
     if(size > 512){
         return operator new(size);
     }
+    // round up to nearest multiple of 8
     return reinterpret_cast<void*>(get_MemoryPool(((size + 7) >> 3) - 1).alloc());
 
 }
 void Free_Memory(size_t size, void* p){
     if(!p) return;
-    if(size > 32){
+    if(size > 512){
         operator delete (p);
         return;
     }
