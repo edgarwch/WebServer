@@ -18,7 +18,7 @@ class MutexLock:noncopyable{
         void Unlock(){
             pthread_mutex_unlock(&_mutex);
         }
-        pthread_mutex_t* GetMutex(){
+        pthread_mutex_t* get(){
             return &_mutex;
         }
     private:

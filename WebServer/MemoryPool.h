@@ -24,7 +24,7 @@ class MemoryPool:noncopyable{
         
         Slot* _freeSlot;
         Slot* _currentSlot;
-        Slot* _firstBlock;
+        Slot* _currentBlock;
         Slot* _lastSlot;
 
         MutexLock _mutex_free_slot;;
@@ -46,7 +46,7 @@ void Free_Memory(size_t size, void* p);
 template<typename T, typename... Args>
 T* NewElement(Args&&... args){
     T* p;
-    if((p = reinterpret_cast<T*>(Use_Memory(sizeof(T))))){
+    if( p = reinterpret_cast<T*>(Use_Memory(sizeof(T)))){
         new(p) T(std::forward<Args>(args)...);
     }
     return p;
@@ -54,7 +54,7 @@ T* NewElement(Args&&... args){
 
 template<typename T>
 void DeleteElement(T *p){
-    if(p){
+    if(p != nullptr){
         p->~T();
     }
     Free_Memory(sizeof(T), reinterpret_cast<void*>(p));
