@@ -38,7 +38,7 @@ Slot* MemoryPool::allocateBlock(){
 
     Slot* useSlot;
     {
-        MutexLockGard Lock(_mutex_other);
+        MutexLockGuard Lock(_mutex_other);
         reinterpret_cast<Slot*>(newBlock)->next = _currentBlock;
         _currentBlock = reinterpret_cast<Slot*>(newBlock);
         _currentSlot = reinterpret_cast<Slot*>(body + padding);
@@ -56,7 +56,7 @@ Slot* MemoryPool::nofree_slove(){
     }
     Slot* use;
     {
-        MutexLockGard Lock(_mutex_other);
+        MutexLockGuard Lock(_mutex_other);
         use = _currentSlot;
         _currentSlot += (_slotSize >> 3);
     }
@@ -66,7 +66,7 @@ Slot* MemoryPool::nofree_slove(){
 Slot* MemoryPool::alloc(){
     if(_freeSlot){
         {
-            MutexLockGard Lock(_mutex_free_slot);
+            MutexLockGuard Lock(_mutex_free_slot);
             if(_freeSlot){
                 Slot* res = _freeSlot;
                 _freeSlot = _freeSlot->next;
@@ -79,7 +79,7 @@ Slot* MemoryPool::alloc(){
 
 inline void MemoryPool::dealloc(Slot* slot){
     if(slot){
-        MutexLockGard Lock(_mutex_free_slot);
+        MutexLockGuard Lock(_mutex_free_slot);
         slot->next = _freeSlot;
         _freeSlot = slot;
     }

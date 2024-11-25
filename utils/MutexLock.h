@@ -6,10 +6,11 @@
 class MutexLock:noncopyable{
     public:
         MutexLock(){
-            pthread_mutex_init(&_mutex, NULL);
+            if (pthread_mutex_init(&_mutex, nullptr) != 0) {
+                perror("Failed to initialize mutex");
+            }
         }
         ~MutexLock(){
-            pthread_mutex_lock(&_mutex);
             pthread_mutex_destroy(&_mutex);
         }
         void Lock(){
@@ -26,10 +27,10 @@ class MutexLock:noncopyable{
 };
 
 
-class MutexLockGard:noncopyable{
+class MutexLockGuard:noncopyable{
     public:
-        explicit MutexLockGard(MutexLock &mutex):_mutex(mutex){ _mutex.Lock(); };
-        ~MutexLockGard(){
+        explicit MutexLockGuard(MutexLock &mutex):_mutex(mutex){ _mutex.Lock(); };
+        ~MutexLockGuard(){
             _mutex.Unlock();
         }
     private:

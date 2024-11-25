@@ -1,67 +1,52 @@
 #pragma once
 #include <functional>
 #include <vector>
+#include <memory>
 #include "Channel.h"
 #include "Mypoll.h"
+#include "TImerQueue.h"
 #include "../utils/util.h"
 #include "SocketUtils.h"
-class EventLoop{
-    public:
-        // callback function
-        typedef std::function<void()> Func;
+#include "../utils/MutexLock.h"
 
-        EventLoop();
-        ~EventLoop();
-        
-        void Loop();
-        void StopLoop();
+class EventLoop {
+public:
+    using Func = std::function<void()>;
 
-        void RunInLoop(Func&& func);
+    EventLoop();
+    ~EventLoop();
 
-        void QueueLoop(Func&& func);
+    void Loop();        // Start
+    void StopLoop();    // Stop
 
-        //polleradd
-        void PollerAdd(std::shared_ptr<Channel> channel, int timeout = 0){
-            _poller->epoll_add(channel);
-        };
-        //poller mod
-        void PollerMod(std::shared_ptr<Channel> channel, int timeout = 0){
-            _poller->epoll_mod(channel);
-        };
-        //poller del
-        void PollerDel(std::shared_ptr<Channel> channel){
-            _poller->epoll_del(channel);
-        };
-        //shutdown!
-        void Shutdown(std::shared_ptr<Channel> channel){
-            // SOCKET shutdown
-            // clear the buffer first
-        };
+    void RunInLoop(Func&& func);    // Execute
+    void QueueLoop(Func&& func);   // Queue
 
-        bool IsInLoopThread();
+    void PollerAdd(std::shared_ptr<Channel> channel, int timeout = 0);
+    void PollerMod(std::shared_ptr<Channel> channel, int timeout = 0);
+    void PollerDel(std::shared_ptr<Channel> channel);
+    bool IsInLoopThread() const; 
+    void Shutdown(std::shared_ptr<Channel> channel); // shutdown
+    void HandleExpiredTimers();
+    // void HandleRead(int fd);
+    void HandleWrite(int fd, const std::string& response);
 
-    private:
+private:
+    static int MkEventfd();        // Create eventfd
+    void HandleUpdate();           // Update handler
+    void HandleRead();             // Handle wakeup events
+    void AsynWake();               // Wake up the loop
+    void HandlePendingFunctions(); // Execute queued functions
 
-        int _event_fd;
+    int _event_fd;                 // wakeup events
+    bool _is_stop;
+    bool _is_looping;
+    bool _is_event_handleing;
+    bool _is_handling_pending_functions;
 
-        pid_t thread_id;
-
-        bool _is_stop;
-        bool _is_looping;
-        bool _is_event_handleing;
-        bool _is_handling_pending_functions;
-
-        static int MkEventfd();
-        void HandleUpdate();
-        void HandleRead(); // by read from event_fd
-        void AsynWake(); // by write to event_fd
-        void HandlePendingFUnctions();
-
-        std::shared_ptr<Channel> _wakeup_channel;
-
-        std::shared_ptr<Mypoll> _poller;
-
-        // mutex lock
-
-        std::vector<Func> pendingFunction;
+    std::shared_ptr<Channel> _wakeup_channel; // Channel for wakeup events
+    std::shared_ptr<Mypoll> _poller;          // Poller for events
+    pid_t thread_id;
+    MutexLock mutex_;
+    std::vector<Func> pendingFunction; // Queued functions to execute
 };
