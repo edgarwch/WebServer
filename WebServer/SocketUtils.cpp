@@ -8,9 +8,12 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <arpa/inet.h>
+
 //
 
 const int MAX_BUFF = 4096;
+// read exact number of size from buffer as n
 ssize_t readn(int fd, void *buff, size_t n) {
   size_t nleft = n;
   ssize_t nread = 0;
@@ -22,10 +25,12 @@ ssize_t readn(int fd, void *buff, size_t n) {
         nread = 0;
       else if (errno == EAGAIN) {
         return readSum;
-      } else {
+      } 
+      else {
         return -1;
       }
-    } else if (nread == 0)
+    } 
+    else if (nread == 0)
       break;
     readSum += nread;
     nleft -= nread;
@@ -44,11 +49,13 @@ ssize_t readn(int fd, std::string &inBuffer, bool &zero) {
         continue;
       else if (errno == EAGAIN) {
         return readSum;
-      } else {
+      } 
+      else {
         perror("read error");
         return -1;
       }
-    } else if (nread == 0) {
+    } 
+    else if (nread == 0) { // EOF..
       zero = true;
       break;
     }
@@ -68,11 +75,13 @@ ssize_t readn(int fd, std::string &inBuffer) {
         continue;
       else if (errno == EAGAIN) {
         return readSum;
-      } else {
+      } 
+      else {
         perror("read error");
         return -1;
       }
-    } else if (nread == 0) {
+    } 
+    else if (nread == 0) {
       break;
     }
     readSum += nread;
@@ -92,9 +101,11 @@ ssize_t writen(int fd, void *buff, size_t n) {
         if (errno == EINTR) {
           nwritten = 0;
           continue;
-        } else if (errno == EAGAIN) {
+        } 
+        else if (errno == EAGAIN) {
           return writeSum;
-        } else
+        } 
+        else
           return -1;
       }
     }
@@ -116,7 +127,8 @@ ssize_t writen(int fd, std::string &sbuff) {
         if (errno == EINTR) {
           nwritten = 0;
           continue;
-        } else if (errno == EAGAIN)
+        } 
+        else if (errno == EAGAIN)
           break;
         else
           return -1;
@@ -149,7 +161,7 @@ int setSocketNonBlocking(int fd) {
   if (fcntl(fd, F_SETFL, flag) == -1) return -1;
   return 0;
 }
-
+// disable Nagel's algo don't buffers small packages
 void setSocketNodelay(int fd) {
   int enable = 1;
   setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (void *)&enable, sizeof(enable));
@@ -164,6 +176,39 @@ void setSocketNoLinger(int fd) {
 
 void shutDownWR(int fd) {
   shutdown(fd, SHUT_WR);
+}
+
+
+int socket_blind_listen(const std::string& ip_address, int port){
+  if(port < 0 || port > 65535) return -1;
+  int listen_fd = 0;
+  if((listen_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) return -1;
+  int value = 1;
+  if(setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value)) == -1){
+    close(listen_fd);
+    return -1;
+  }
+  struct sockaddr_in server_addr;
+  memset(&server_addr, 0, sizeof(server_addr));
+  server_addr.sin_family = AF_INET;
+  if(inet_pton(AF_INET, ip_address.c_str(), &server_addr.sin_addr) <= 0){
+    close(listen_fd);
+    return -1;
+  }
+  server_addr.sin_port = htons((unsigned short)port);
+  if(bind(listen_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1){
+    close(listen_fd);
+    return -1;
+  }
+  if(listen(listen_fd, 2048) == -1){
+    close(listen_fd);
+    return -1;
+  }
+  if(listen_fd == -1){
+    close(listen_fd);
+    return -1;
+  }
+  return listen_fd;
 }
 
 int socket_bind_listen(int port) {

@@ -2,10 +2,10 @@
 
 class noncopyable{
 public:
-    noncopyable();
-    ~noncopyable();
+    noncopyable() = default;
+    ~noncopyable() = default;
 private:
     // disable copy constructor and assign
-    noncopyable(const noncopyable&);
-    const noncopyable& operator=(const noncopyable&);
+    noncopyable(const noncopyable&) = delete;
+    noncopyable& operator=(const noncopyable&) = delete;
 };
